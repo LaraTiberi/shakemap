@@ -29,8 +29,7 @@ STATION_KML = 'stations.kml'
 CONTOUR_KML = 'mmi_contour.kml'
 KMZ_FILE = 'shakemap.kmz'
 KML_FILE = 'shakemap.kml'
-EPICENTER_URL = \
-    'http://maps.google.com/mapfiles/kml/shapes/capital_big_highlight.png'
+EPICENTER_URL = 'http://maps.google.com/mapfiles/kml/shapes/capital_big_highlight.png'
 LEGEND = 'intensity_legend.png'
 
 LOOKAT_ALTITUDE = 500000  # meters
@@ -40,6 +39,9 @@ CIRCLE = 'circle.png'
 
 IMT_UNITS = {'pga': '%g',
              'pgv': 'cm/sec',
+             'ia': 'cm/sec',
+             'pgd': 'cm',
+             'ih': 'cm',
              'sa(0.3)': '%g',
              'sa(1.0)': '%g',
              'sa(3.0)': '%g'}
@@ -53,8 +55,6 @@ class KMLModule(CoreModule):
     """
 
     command_name = 'kml'
-    targets = [r'products/shakemap\.kmz']
-    dependencies = [('products/shake_result.hdf', True)]
 
     # supply here a data structure with information about files that
     # can be created by this module.
@@ -95,9 +95,6 @@ class KMLModule(CoreModule):
         if not os.path.isfile(datafile):
             raise FileNotFoundError('%s does not exist.' % datafile)
 
-        global_data_path = os.path.join(os.path.expanduser('~'),
-                                        'shakemap_data')
-
         # Open the ShakeMapOutputContainer and extract the data
         container = ShakeMapOutputContainer.load(datafile)
 
@@ -110,13 +107,10 @@ class KMLModule(CoreModule):
             install_path, 'config', 'products.conf')
         pconfig = configobj.ConfigObj(product_config_file)
         oceanfile = pconfig['products']['mapping']['layers']['lowres_oceans']
-        oceanfile = path_macro_sub(oceanfile, ip=install_path, dp=data_path,
-                                   gp=global_data_path)
+        oceanfile = path_macro_sub(oceanfile, install_path, data_path)
 
         # call create_kmz function
         create_kmz(container, datadir, oceanfile, self.logger)
-
-        container.close()
 
 
 def create_kmz(container, datadir, oceanfile, logger):
@@ -188,8 +182,7 @@ def create_kmz(container, datadir, oceanfile, logger):
 
 
 def place_legend(datadir, document):
-    """Place the ShakeMap intensity legend in the upper left corner of
-    the viewer's map.
+    """Place the ShakeMap intensity legend in the upper left corner of the viewer's map.
 
     Args:
         datadir (str): Path to data directory where output KMZ will be written.
@@ -221,7 +214,7 @@ def place_legend(datadir, document):
     # we need to find the legend file and copy it to
     # the output directory
     this_dir, _ = os.path.split(__file__)
-    data_path = os.path.join(this_dir, '..', 'data', 'mapping')
+    data_path = os.path.join(this_dir, '..', 'data')
     legend_file = os.path.join(data_path, LEGEND)
     legdest = os.path.join(datadir, LEGEND)
     shutil.copyfile(legend_file, legdest)
@@ -479,7 +472,7 @@ def create_stations(container, datadir, document):
     # we need to find the triangle and circle icons and copy them to
     # the output directory
     this_dir, _ = os.path.split(__file__)
-    data_path = os.path.join(this_dir, '..', 'data', 'mapping')
+    data_path = os.path.join(this_dir, '..', 'data')
     triangle_file = os.path.join(data_path, TRIANGLE)
     circle_file = os.path.join(data_path, CIRCLE)
     tridest = os.path.join(datadir, TRIANGLE)
@@ -541,8 +534,7 @@ def get_intensity(station):
             intensity = 0
         else:
             mmi_idx = channels.index('mmi')
-            mmid = station['properties']['channels'][mmi_idx]
-            intensity = mmid['amplitudes'][0]['value']
+            intensity = station['properties']['channels'][mmi_idx]['amplitudes'][0]['value']
     return intensity
 
 
@@ -595,10 +587,13 @@ def get_description_table(station):
 
 def imt_to_string(imt):
     non_spectrals = {'pga': 'PGA',
-                     'pgv': 'PGV'}
+                     'pgv': 'PGV',
+                     'ia' : 'IA',
+                     'pgd': 'PGD',
+                     'ih' : 'IH'}
     if imt in non_spectrals:
         return non_spectrals[imt]
-    period = re.search("\d+\.\d+", imt).group()  # noqa
+    period = re.search("\d+\.\d+", imt).group()
     imt_string = 'PSA %s sec' % period
     return imt_string
 
@@ -678,6 +673,21 @@ def get_description(station):
     pgv_dt.text = 'PGV:'
     pgv_dd = etree.SubElement(dl, 'dd')
     pgv_dd.text = get_imt_text(station, 'pgv')
+
+    ia_dt = etree.SubElement(dl, 'dt')
+    ia_dt.text = 'IA:'
+    ia_dd = etree.SubElement(dl, 'dd')
+    ia_dd.text = get_imt_text(station, 'ia')
+
+    pgd_dt = etree.SubElement(dl, 'dt')
+    pgd_dt.text = 'PGD:'
+    pgd_dd = etree.SubElement(dl, 'dd')
+    pgd_dd.text = get_imt_text(station, 'pgd')
+
+    ih_dt = etree.SubElement(dl, 'dt')
+    ih_dt.text = 'IH:'
+    ih_dd = etree.SubElement(dl, 'dd')
+    ih_dd.text = get_imt_text(station, 'ih')
 
     psa03_dt = etree.SubElement(dl, 'dt')
     psa03_dt.text = 'PSA 0.3 sec:'

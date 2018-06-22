@@ -1,5 +1,6 @@
 # stdlib imports
 import os.path
+import json
 from datetime import datetime
 import glob
 import re
@@ -33,7 +34,6 @@ class TransferModule(CoreModule):
     """
 
     command_name = 'transfer'
-    dependencies = [('products/*', False)]
 
     def execute(self):
         """
@@ -88,8 +88,6 @@ class TransferModule(CoreModule):
 
         # copy the current folder to a new backup directory
         self._make_backup(data_path)
-
-        container.close()
 
     def _make_backup(self, data_path):
         data_dir = os.path.join(data_path, self._eventid)
@@ -196,6 +194,21 @@ def _get_properties(info):
         pgv_info = info['output']['ground_motions']['PGV']
         product_properties['maxpgv'] = pgv_info['max']
         product_properties['maxpgv-grid'] = pgv_info['max_grid']
+
+    if 'PGD' in info['output']['ground_motions']:
+        pgd_info = info['output']['ground_motions']['PGD']
+        product_properties['maxpgd'] = pgd_info['max']
+        product_properties['maxpgd-grid'] = pgd_info['max_grid']
+
+    if 'IA' in info['output']['ground_motions']:
+        ia_info = info['output']['ground_motions']['IA']
+        product_properties['maxia'] = ia_info['max']
+        product_properties['maxia-grid'] = ia_info['max_grid']
+
+    if 'IH' in info['output']['ground_motions']:
+        ih_info = info['output']['ground_motions']['IH']
+        product_properties['maxih'] = ih_info['max']
+        product_properties['maxih-grid'] = ih_info['max_grid']
 
     if 'PGA' in info['output']['ground_motions']:
         pga_info = info['output']['ground_motions']['PGA']

@@ -22,8 +22,6 @@ class PlotRegr(CoreModule):
     """
 
     command_name = 'plotregr'
-    targets = [r'products/.*_regr\.png']
-    dependencies = [('products/shake_result.hdf', True)]
 
     # supply here a data structure with information about files that
     # can be created by this module.
@@ -31,40 +29,75 @@ class PlotRegr(CoreModule):
     contents = OrderedDict.fromkeys(['miRegr',
                                      'pgaRegr',
                                      'pgvRegr',
+                                     'iaRegr',
+                                     'pgdRegr',
+                                     'ihRegr',
                                      'psa[PERIOD]Regr'])
     contents['miRegr'] = {
-        'title': 'Intensity Regression',
+	'title': 'Intensity Regression',
         'caption': 'Regression plot of macroseismic intensity.',
         'page': regr_page,
-        'formats': [{'filename': 'MMI_regr.png',
-                     'type': 'image/png'}]
+        'formats': [{'filename':'MMI_regr.png',
+                     'type':'image/png'}
+        ]
     }
 
     contents['pgaRegr'] = {
-        'title': 'PGA Regression',
-        'caption': 'Regression plot of [COMPONENT] peak ground '
+	'title': 'PGA Regression',
+        'caption': 'Regression plot of [COMPONENT] peak ground '\
                    'acceleration (%g).',
         'page': regr_page,
-        'formats': [{'filename': 'PGA_regr.png',
-                     'type': 'image/png'}]
+        'formats': [{'filename':'PGA_regr.png',
+                     'type':'image/png'}
+        ]
     }
     contents['pgvRegr'] = {
-        'title': 'PGV Regression',
-        'caption': 'Regression plot of [COMPONENT] peak ground '
+	'title': 'PGV Regression',
+        'caption': 'Regression plot of [COMPONENT] peak ground '\
                    'velocity (cm/s).',
         'page': regr_page,
-        'formats': [{'filename': 'PGV_regr.png',
-                     'type': 'image/png'}]
+        'formats': [{'filename':'PGV_regr.png',
+                     'type':'image/png'}
+        ]
     }
-    psacap = 'Regression plot of [COMPONENT] [FPERIOD] sec 5% damped ' \
+    contents['iaRegr'] = {
+	'title': 'IA Regression',
+        'caption': 'Regression plot of [COMPONENT] Arias Intensity '\
+                   '(cm/s).',
+        'page': regr_page,
+        'formats': [{'filename':'IA_regr.png',
+                     'type':'image/png'}
+        ]
+    }
+    contents['pgdRegr'] = {
+	'title': 'PGD Regression',
+        'caption': 'Regression plot of [COMPONENT] peak ground '\
+                   'displacement (cm).',
+        'page': regr_page,
+        'formats': [{'filename':'PGD_regr.png',
+                     'type':'image/png'}
+        ]
+    }
+    contents['ihRegr'] = {
+	'title': 'IH Regression',
+        'caption': 'Regression plot of [COMPONENT] Housner '\
+                   'intensity (cm).',
+        'page': regr_page,
+        'formats': [{'filename':'IH_regr.png',
+                     'type':'image/png'}
+        ]
+    }
+    psacap = 'Regression plot of [COMPONENT] [FPERIOD] sec 5% damped '\
              'pseudo-spectral acceleration(%g).'
     contents['psa[PERIOD]Regr'] = {
-        'title': 'PSA[PERIOD] Regression',
+	'title': 'PSA[PERIOD] Regression',
         'page': regr_page,
         'caption': psacap,
-        'formats': [{'filename': 'PSA[0-9]p[0-9]_regr.png',
-                     'type': 'image/png'}]
+        'formats': [{'filename':'PSA[0-9]p[0-9]_regr.png',
+                     'type':'image/png'}
+        ]
     }
+
 
     def execute(self):
         """
@@ -97,16 +130,13 @@ class PlotRegr(CoreModule):
         soilsd = {}
         imtlist = ic.getIMTs('GREATER_OF_TWO_HORIZONTAL')
         for myimt in imtlist:
-            rockgrid[myimt], _ = ic.getArray(
-                'regression_' + myimt + '_rock_mean')
-            soilgrid[myimt], _ = ic.getArray(
-                'regression_' + myimt + '_soil_mean')
+            rockgrid[myimt], _ = ic.getArray('regression_' + myimt + '_rock_mean')
+            soilgrid[myimt], _ = ic.getArray('regression_' + myimt + '_soil_mean')
             rocksd[myimt], _ = ic.getArray('regression_' + myimt + '_rock_sd')
             soilsd[myimt], _ = ic.getArray('regression_' + myimt + '_soil_sd')
         distances, _ = ic.getArray('regression_distances')
 
         stations = ic.getStationDict()
-        ic.close()
 
         #
         # Make plots
@@ -153,7 +183,7 @@ class PlotRegr(CoreModule):
                                     thisamp = amp['value']
                                 if thisamp <= 0:
                                     break
-                                if myimt == 'PGV':
+                                if myimt == 'PGV' or myimt == 'IA' or myimt == 'PGD' or myimt == 'IH':
                                     tmpval = np.log(thisamp)
                                 else:
                                     tmpval = np.log(thisamp / 100.)
@@ -165,28 +195,24 @@ class PlotRegr(CoreModule):
                 else:
                     symbol = 'o'
                     if myimt == 'MMI':
-                        amp = (station['properties']['channels'][0]
-                               ['amplitudes'][0])
+                        amp = station['properties']['channels'][0]['amplitudes'][0]
                         if amp['flag'] == '' or amp['flag'] == '0':
                             if amp['value'] != 'null':
                                 if isinstance(amp['value'], str):
                                     value = float(amp['value'])
                                 else:
                                     value = amp['value']
-                                plt.semilogx(dist, value, symbol + 'k',
-                                             mfc='none')
+                                plt.semilogx(dist, value, symbol + 'k', mfc='none')
                     else:
                         imtstr = myimt.lower()
                         if imtstr in station['properties']['pgm_from_mmi']:
-                            amp = (station['properties']['pgm_from_mmi']
-                                   [imtstr]['value'])
+                            amp = station['properties']['pgm_from_mmi'][imtstr]['value']
                             if amp != 'null' and amp != 0:
-                                if myimt == 'PGV':
+                                if myimt == 'PGV' or myimt == 'IA' or myimt == 'PGD' or myimt == 'IH':
                                     amp = np.log(amp)
                                 else:
                                     amp = np.log(amp / 100.)
-                                plt.semilogx(dist, amp, symbol + 'k',
-                                             mfc='none')
+                                plt.semilogx(dist, amp, symbol + 'k', mfc='none')
 
             plt.title(self._eventid + ': ' + myimt + ' mean')
             plt.xlabel('Rrup (km)')
@@ -194,6 +220,12 @@ class PlotRegr(CoreModule):
                 plt.ylabel('MMI')
             elif myimt == 'PGV':
                 plt.ylabel('PGV ln(cm/s)')
+            elif myimt == 'IA':
+                plt.ylabel('IA ln(cm/s)')
+            elif myimt == 'PGD':
+                plt.ylabel('PGD ln(cm)')
+            elif myimt == 'IH':
+                plt.ylabel('IH ln(cm)')
             else:
                 plt.ylabel(myimt + ' ln(g)')
             plt.legend()
@@ -202,3 +234,4 @@ class PlotRegr(CoreModule):
             pfile = os.path.join(datadir, fileimt + '_regr.png')
             plt.savefig(pfile)
             plt.close()
+

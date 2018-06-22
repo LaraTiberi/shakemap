@@ -11,7 +11,7 @@ import pkg_resources
 # Third party imports
 import numpy as np
 from openquake.hazardlib.const import IMC
-from openquake.hazardlib.imt import PGA, PGV
+from openquake.hazardlib.imt import PGA, PGV,IA,PGD,IH
 import pandas as pd
 
 # Local imports
@@ -102,7 +102,7 @@ class BooreKishida2017(ComponentConverter):
         self.path = self.getShortestPath(self.conversion_graph,
                 self.imc_in, self.imc_out)
 
-    def convertAmpsOnce(self, imt, amps, rrups=None, mag=None):
+    def convertAmpsOnce(self, imt, amps, rrups, mag):
         """
         Return an array of amps converted from one IMC to another.
 
@@ -152,6 +152,7 @@ class BooreKishida2017(ComponentConverter):
             amps = amps - ln_ratio
         else:
             amps = amps + ln_ratio
+
         return amps
 
     def convertSigmasOnce(self, imt, sigmas):
@@ -214,6 +215,24 @@ class BooreKishida2017(ComponentConverter):
             r1 = self.pars['r1smooth'][1]
             m1 = self.pars['m1smooth'][1]
             m2 = self.pars['m2smooth'][1]
+        elif imt == IA():
+            sigma = self.pars['sigma'][3]
+            c0 = self.pars['c0smooth'][3]
+            r1 = self.pars['r1smooth'][3]
+            m1 = self.pars['m1smooth'][3]
+            m2 = self.pars['m2smooth'][3]
+        elif imt == PGD():
+            sigma = self.pars['sigma'][4]
+            c0 = self.pars['c0smooth'][4]
+            r1 = self.pars['r1smooth'][4]
+            m1 = self.pars['m1smooth'][4]
+            m2 = self.pars['m2smooth'][4]
+        elif imt == IH():
+            sigma = self.pars['sigma'][5]
+            c0 = self.pars['c0smooth'][5]
+            r1 = self.pars['r1smooth'][5]
+            m1 = self.pars['m1smooth'][5]
+            m2 = self.pars['m2smooth'][5]
         elif 'SA' in imt:
             imt_per = imt.period
             pa = self.pars['per'][2:]
@@ -318,3 +337,5 @@ class BooreKishida2017(ComponentConverter):
             self.pars = None
         else:
             self.pars = pd.read_csv(filename)
+
+BooreKishida2017('blerg', 'blerg')

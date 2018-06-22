@@ -226,6 +226,9 @@ class StationList(object):
                     'intensity_stddev': None,
                     'pga': None,
                     'pgv': None,
+                    'pgd': None,
+                    'ih': None,
+                    'ia':  None,
                     'distance': None,
                     'channels': []
                 },
@@ -258,6 +261,18 @@ class StationList(object):
                     if value != 'null':
                         value = float('%.4f' % (np.exp(value)))
                     units = 'cm/s'
+                elif amp[1] == 'IA':
+                    if value != 'null':
+                        value = float('%.4f' % (np.exp(value)))
+                    units = 'cm/s'
+                elif amp[1] == 'PGD':
+                    if value != 'null':
+                        value = float('%.4f' % (np.exp(value)))
+                    units = 'cm'
+                elif amp[1] == 'IH':
+                    if value != 'null':
+                        value = float('%.4f' % (np.exp(value)))
+                    units = 'cm'
                 elif amp[1] == 'MMI':
                     if value != 'null':
                         value = float('%.1f' % (value))
@@ -442,6 +457,42 @@ class StationList(object):
                         else:
                             raise ValueError('Unknown units %s in input'
                                              % units)
+                    elif imt_type == 'IA':
+                        if units == 'cm/s':
+                            if amp <= 0:
+                                amp = 'NULL'
+                                flag = 'G'
+                            else:
+                                amp = np.log(amp)
+                        elif units == 'ln(m/s)':
+                            pass
+                        else:
+                            raise ValueError('Unknown units %s in input'
+                                             % units)
+                    elif imt_type == 'PGD':
+                        if units == 'cm':
+                            if amp <= 0:
+                                amp = 'NULL'
+                                flag = 'G'
+                            else:
+                                amp = np.log(amp)
+                        elif units == 'ln(cm)':
+                            pass
+                        else:
+                            raise ValueError('Unknown units %s in input'
+                                             % units)
+                    elif imt_type == 'IH':
+                        if units == 'cm':
+                            if amp <= 0:
+                                amp = 'NULL'
+                                flag = 'G'
+                            else:
+                                amp = np.log(amp)
+                        elif units == 'ln(cm)':
+                            pass
+                        else:
+                            raise ValueError('Unknown units %s in input'
+                                             % units)
                     else:
                         if units == '%g':
                             if amp <= 0:
@@ -614,6 +665,12 @@ class StationList(object):
                     new_key = 'PGA'
                 elif key in ('vel', 'pgv'):
                     new_key = 'PGV'
+                elif key in ('vel', 'ia'):
+                    new_key = 'IA'
+                elif key in ('dis', 'pgd'):
+                    new_key = 'PGD'
+                elif key in ('dis', 'ih'):
+                    new_key = 'IH'
                 elif 'mmi' in key:
                     new_key = 'MMI'
                 elif 'psa' in key:
@@ -649,6 +706,12 @@ class StationList(object):
             else:
                 if key == 'PGV':
                     units = 'cm/s'
+                elif key == 'IA':
+                    units = 'cm/s'
+                elif key == 'PGD':
+                    units = 'cm'
+                elif key == 'IH':
+                    units = 'cm'
                 elif key == 'MMI':
                     units = 'intensity'
                 else:

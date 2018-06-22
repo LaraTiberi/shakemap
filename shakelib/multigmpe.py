@@ -6,7 +6,7 @@ from importlib import import_module
 import numpy as np
 
 from openquake.hazardlib.gsim.base import GMPE
-from openquake.hazardlib.imt import PGA, PGV, SA
+from openquake.hazardlib.imt import PGA, PGV, SA, IA,PGD,IH
 from openquake.hazardlib import const
 
 from shakelib.conversions.imt.newmark_hall_1982 import NewmarkHall1982
@@ -716,6 +716,30 @@ def filter_gmpe_list(gmpes, wts, imt):
         swts = [w for g, w in zip(gmpes, wts) if imt in
                 get_gmpe_coef_table(g).non_sa_coeffs]
     elif imt == PGV():
+        sgmpe = []
+        swts = []
+        for i in range(len(gmpes)):
+            if (imt in get_gmpe_coef_table(gmpes[i]).non_sa_coeffs) or\
+               (per_max[i] >= 1.0 and per_min[i] <= 1.0):
+                sgmpe.append(gmpes[i])
+                swts.append(wts[i])
+    elif imt == IA():
+        sgmpe = []
+        swts = []
+        for i in range(len(gmpes)):
+            if (imt in get_gmpe_coef_table(gmpes[i]).non_sa_coeffs) or\
+               (per_max[i] >= 1.0 and per_min[i] <= 1.0):
+                sgmpe.append(gmpes[i])
+                swts.append(wts[i])
+    elif imt == PGD():
+        sgmpe = []
+        swts = []
+        for i in range(len(gmpes)):
+            if (imt in get_gmpe_coef_table(gmpes[i]).non_sa_coeffs) or\
+               (per_max[i] >= 1.0 and per_min[i] <= 1.0):
+                sgmpe.append(gmpes[i])
+                swts.append(wts[i])
+    elif imt == IH():
         sgmpe = []
         swts = []
         for i in range(len(gmpes)):

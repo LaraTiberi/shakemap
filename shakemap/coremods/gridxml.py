@@ -1,5 +1,6 @@
 # stdlib imports
 import os.path
+import json
 import logging
 from datetime import datetime
 import re
@@ -48,7 +49,7 @@ def _oq_to_gridxml(oqimt):
         ValueError: when there is no corresponding filename-friendly
             IMT representation, or when frequency exceeds 9.9.
     """
-    if oqimt in ['PGA', 'PGV', 'MMI']:
+    if oqimt in ['PGA', 'PGV', 'MMI','IA','PGD','IH']:
         return oqimt
     float_pattern = r"[-+]?\d*\.\d+|\d+"
     periods = re.findall(float_pattern, oqimt)
@@ -75,8 +76,6 @@ class GridXMLModule(CoreModule):
     """
 
     command_name = 'gridxml'
-    targets = [r'products/grid\.xml', r'products/uncertainty\.xml']
-    dependencies = [('products/shake_result.hdf', True)]
 
     contents = {'xmlGrids': {'title': 'XML Grid',
                              'caption': 'XML grid of ground motions',
@@ -193,5 +192,3 @@ class GridXMLModule(CoreModule):
             fname = os.path.join(datadir, '%s.xml' % xml_type)
             logger.debug('Saving IMT grids to %s' % fname)
             shake_grid.save(fname)  # TODO - set grid version number
-
-        container.close()

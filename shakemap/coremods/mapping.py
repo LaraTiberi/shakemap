@@ -1,6 +1,7 @@
 # stdlib
 import os.path
 import time
+import json
 from datetime import datetime
 from collections import OrderedDict
 
@@ -70,7 +71,7 @@ EPICENTER_ZORDER = 1100
 STATIONS_ZORDER = 1150
 CITIES_ZORDER = 1200
 GRATICULE_ZORDER = 1200
-SCALE_ZORDER = 1500
+SCALE_ZORDER = 2500
 SCENARIO_ZORDER = 2000
 
 THUMBNAIL_WIDTH_PIXELS = 800
@@ -95,17 +96,12 @@ class MappingModule(CoreModule):
     """
 
     command_name = 'mapping'
-    targets = [r'products/intensity\.jpg', r'products/intensity\.pdf',
-               r'products/.*_contour\.jpg', r'products/.*_contour\.pdf',
-               r'products/psa.*\.jpg']
-    dependencies = [('products/shake_result.hdf', True)]
-    configs = ['products.conf']
 
     # supply here a data structure with information about files that
     # can be created by this module.
     mapping_page = {'title': 'Ground Motion Maps', 'slug': 'maps'}
     contents = OrderedDict.fromkeys(
-        ['intensityMap', 'pgaMap', 'pgvMap', 'psa[PERIOD]Map'])
+        ['intensityMap', 'pgaMap', 'pgvMap', 'iaMap', 'pgdMap', 'ihMap', 'psa[PERIOD]Map'])
     contents['intensityMap'] = {'title': 'Intensity Map',
                                 'caption': 'Map of macroseismic intensity.',
                                 'page': mapping_page,
@@ -131,6 +127,33 @@ class MappingModule(CoreModule):
                           'formats': [{'filename': 'pgv.jpg',
                                        'type': 'image/jpeg'},
                                       {'filename': 'PGV_contour.pdf',
+                                       'type': 'application/pdf'},
+                                      ]
+                          }
+    contents['iaMap'] = {'title': 'IA Map',
+                          'caption': 'Map of Arias Intensity (cm/s).',
+                          'page': mapping_page,
+                          'formats': [{'filename': 'ia.jpg',
+                                       'type': 'image/jpeg'},
+                                      {'filename': 'IA_contour.pdf',
+                                       'type': 'application/pdf'},
+                                      ]
+                          }
+    contents['pgdMap'] = {'title': 'PGD Map',
+                          'caption': 'Map of peak ground displacement (cm).',
+                          'page': mapping_page,
+                          'formats': [{'filename': 'pgd.jpg',
+                                       'type': 'image/jpeg'},
+                                      {'filename': 'PGD_contour.pdf',
+                                       'type': 'application/pdf'},
+                                      ]
+                          }
+    contents['ihMap'] = {'title': 'IH Map',
+                          'caption': 'Map of Housner intensity (cm).',
+                          'page': mapping_page,
+                          'formats': [{'filename': 'ih.jpg',
+                                       'type': 'image/jpeg'},
+                                      {'filename': 'IH_contour.pdf',
                                        'type': 'application/pdf'},
                                       ]
                           }
@@ -171,9 +194,6 @@ class MappingModule(CoreModule):
         config_file = os.path.join(install_path, 'config', 'products.conf')
         config = ConfigObj(config_file)
 
-        global_data_path = os.path.join(os.path.expanduser('~'),
-                                        'shakemap_data')
-
         # create contour files
         self.logger.debug('Mapping...')
 
@@ -181,26 +201,19 @@ class MappingModule(CoreModule):
         layerdict = {}
         layers = config['products']['mapping']['layers']
         layerdict['coast'] = path_macro_sub(
-            layers['coasts'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['coasts'], install_path, data_path)
         layerdict['ocean'] = path_macro_sub(
-            layers['oceans'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['oceans'], install_path, data_path)
         layerdict['lake'] = path_macro_sub(
-            layers['lakes'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['lakes'], install_path, data_path)
         layerdict['country'] = path_macro_sub(
-            layers['countries'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['countries'], install_path, data_path)
         layerdict['state'] = path_macro_sub(
-            layers['states'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['states'], install_path, data_path)
         topofile = path_macro_sub(
-            layers['topography'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['topography'], install_path, data_path)
         cities = path_macro_sub(
-            layers['cities'], ip=install_path, dp=data_path,
-            gp=global_data_path)
+            layers['cities'], install_path, data_path)
         mapmaker = MapMaker(container, topofile, layerdict, cities,
                             self.logger,
                             config['products']['mapping']['operator'])
@@ -239,8 +252,6 @@ class MappingModule(CoreModule):
         fig = plt.gcf()
         _save_jpg(fig, sd_file)
         ###########################
-
-        container.close()
 
 
 def getProjectedPolygon(polygon, m):
@@ -1143,6 +1154,12 @@ class MapMaker(object):
         if imt == 'MMI':
             pass
         elif imt == 'PGV':
+            imtdata = np.exp(imtdata)
+        elif imt == 'IA':
+            imtdata = np.exp(imtdata)
+        elif imt == 'PGD':
+            imtdata = np.exp(imtdata)
+        elif imt == 'IH':
             imtdata = np.exp(imtdata)
         else:
             imtdata = np.exp(imtdata) * 100

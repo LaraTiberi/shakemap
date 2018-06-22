@@ -7,6 +7,7 @@ import os.path
 import time as time
 import copy
 from time import gmtime, strftime
+import json
 import shutil
 from collections import OrderedDict
 
@@ -78,8 +79,6 @@ class ModelModule(CoreModule):
     """
 
     command_name = 'model'
-    targets = [r'products/shake_result\.hdf']
-    dependencies = [('shake_data.hdf', True)]
 
     # supply here a data structure with information about files that
     # can be created by this module.
@@ -295,7 +294,6 @@ class ModelModule(CoreModule):
             self._storeRegressionData(oc)
 
         oc.close()
-        self.ic.close()
     # ------------------------------------------------------------------
     # End execute()
     # ------------------------------------------------------------------
@@ -668,7 +666,7 @@ class ModelModule(CoreModule):
             df1['derived_MMI_from_' + imtstr + '_sd'] = \
                 np.full_like(df1[imtstr], self.gmice.getGM2MIsd()[oqimt])
 
-        preferred_imts = ['PGV', 'PGA', 'SA(1.0)', 'SA(0.3)', 'SA(3.0']
+        preferred_imts = ['PGV', 'PGA', 'SA(1.0)', 'SA(0.3)', 'SA(3.0)', 'IA','PGD','IH']
         df1['MMI'] = np.full_like(df1['lon'], np.nan)
         df1['MMI_sd'] = np.full_like(df1['lon'], np.nan)
         for imtstr in preferred_imts:
@@ -1125,6 +1123,12 @@ class ModelModule(CoreModule):
                 units = 'intensity'
             elif myimt == 'PGV':
                 units = 'cms'
+            elif myimt == 'IA':
+                units = 'cms'
+            elif myimt == 'PGD':
+                units = 'cm'
+            elif myimt == 'IH':
+                units = 'cm'
             else:
                 units = 'ln(g)'
             info[op][gm][myimt]['units'] = units
@@ -1311,6 +1315,28 @@ class ModelModule(CoreModule):
                     _round_float(np.exp(sdf['PGV'][six]), 4)
             else:
                 station['properties']['pgv'] = 'null'
+
+            if 'IA' in sdf and not sdf['IA_outliers'][six] \
+                    and not np.isnan(sdf['IA'][six]):
+                station['properties']['ia'] = \
+                    _round_float(np.exp(sdf['IA'][six]), 4)
+            else:
+                station['properties']['ia'] = 'null'
+
+            if 'PGD' in sdf and not sdf['PGD_outliers'][six] \
+                    and not np.isnan(sdf['PGD'][six]):
+                station['properties']['pgd'] = \
+                    _round_float(np.exp(sdf['PGD'][six]), 4)
+            else:
+                station['properties']['pgd'] = 'null'
+
+            if 'IH' in sdf and not sdf['IH_outliers'][six] \
+                    and not np.isnan(sdf['IH'][six]):
+                station['properties']['ih'] = \
+                    _round_float(np.exp(sdf['IH'][six]), 4)
+            else:
+                station['properties']['ih'] = 'null'
+
             #
             # Add the predictions so we can plot residuals
             #
@@ -1326,6 +1352,15 @@ class ModelModule(CoreModule):
                 if key.startswith('PGV'):
                     value = np.exp(myamp)
                     units = 'cm/s'
+                elif key.startswith('IA'):
+                    value = np.exp(myamp)
+                    units = 'cm/s'
+                elif key.startswith('PGD'):
+                    value = np.exp(myamp)
+                    units = 'cm'
+                elif key.startswith('IH'):
+                    value = np.exp(myamp)
+                    units = 'cm'
                 elif key.startswith('MMI'):
                     value = myamp
                     units = 'intensity'
@@ -1390,6 +1425,15 @@ class ModelModule(CoreModule):
                     if myimt == 'PGV':
                         value = np.exp(myamp)
                         units = 'cm/s'
+                    elif myimt == 'IA':
+                        value = np.exp(myamp)
+                        units = 'cm/s'
+                    elif myimt == 'PGD':
+                        value = np.exp(myamp)
+                        units = 'cm'
+                    elif myimt == 'IH':
+                        value = np.exp(myamp)
+                        units = 'cm'
                     else:
                         value = np.exp(myamp) * 100
                         units = '%g'
@@ -1596,9 +1640,9 @@ def _get_period_arrays(*args):
         if imt_list is None:
             continue
         for imtstr in imt_list:
-            if imtstr == 'PGA':
+            if imtstr in ('PGA'):
                 period = 0.01
-            elif imtstr in ('PGV', 'MMI'):
+            elif imtstr in ('PGV', 'MMI','IA','PGD','IH'):
                 period = 1.0
             else:
                 period = float(imtstr.replace('SA(', '').replace(')', ''))
@@ -1666,6 +1710,37 @@ def _get_nearest_imts(imtstr, imtset, saset):
             return sa_tuple
         if 'PGA' in imtset:
             return ('PGA', )
+        else:
+            return ()
+    elif imtstr == 'IA':
+        #
+        # Use the highest frequency in the inputs, otherwise use PGV
+        #
+        if len(saset):
+            return (sorted(saset, key=_get_period_from_imt)[0], )
+        elif 'PGV' in imtset:
+            return ('PGV', )
+        else:
+            return ()
+    elif imtstr == 'PGD':
+        #
+        # Use the highest frequency in the inputs, otherwise use PGV
+        #
+        if len(saset):
+            return (sorted(saset, key=_get_period_from_imt)[0], )
+        elif 'PGV' in imtset:
+            return ('PGV', )
+        else:
+            return ()
+
+    elif imtstr == 'IH':
+        #
+        # Use the highest frequency in the inputs, otherwise use PGV
+        #
+        if len(saset):
+            return (sorted(saset, key=_get_period_from_imt)[0], )
+        elif 'PGV' in imtset:
+            return ('PGV', )
         else:
             return ()
     elif imtstr == 'MMI':
@@ -1839,6 +1914,12 @@ def _get_layer_info(layer):
         layer_units = 'ln(g)'
     elif layer.startswith('PGV'):
         layer_units = 'ln(cm/s)'
+    elif layer.startswith('IA'):
+        layer_units = 'ln(cm/s)'
+    elif layer.startswith('PGD'):
+        layer_units = 'ln(cm)'
+    elif layer.startswith('IH'):
+        layer_units = 'ln(cm)'
     elif layer.startswith('MMI'):
         layer_units = 'intensity'
         layer_digits = 2
